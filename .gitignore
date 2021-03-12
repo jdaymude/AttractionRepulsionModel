@@ -1,3 +1,8 @@
+# Non-code folders
+data/*
+figs/*
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
