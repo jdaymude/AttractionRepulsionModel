@@ -13,7 +13,7 @@ from tqdm import trange
 
 
 def arm(N=100, D=1, E=[0.1], T=0.25, R=0.25, K=math.inf, S=500000, P=0, \
-        shock=(None, None), seed=None, silent=False):
+        shock=(None, None), init='norm', seed=None, silent=False):
     """
     Execute a simulation of the Attraction-Repulsion Model.
 
@@ -27,6 +27,7 @@ def arm(N=100, D=1, E=[0.1], T=0.25, R=0.25, K=math.inf, S=500000, P=0, \
     S (int): number of steps to simulate
     P (float): self-interest probability
     shock ((float, float)): external shock step and strength
+    init (str): 'norm' for Gaussian normal initialization, 'emp' for empirical
     seed (int): random seed
     silent (bool): True if progress should be shown on command line
 
@@ -40,23 +41,31 @@ def arm(N=100, D=1, E=[0.1], T=0.25, R=0.25, K=math.inf, S=500000, P=0, \
     rng = np.random.default_rng(seed)
 
     # Initialize the agent population and their initial ideological positions.
-    if D == 1:
-        config = np.zeros(N)
-        for i in np.arange(N):
-            while True:
-                config[i] = rng.normal(0.5, 0.2)
-                if 0 <= config[i] and config[i] <= 1:
-                    break
+    if init == 'norm':
+        if D == 1:
+            config = np.zeros(N)
+            for i in np.arange(N):
+                while True:
+                    config[i] = rng.normal(0.5, 0.2)
+                    if 0 <= config[i] and config[i] <= 1:
+                        break
+            config = config.reshape(-1, 1)
+        else:  # Higher dimensions.
+            means, covs = 0.5 + np.zeros(D), 0.04 * np.eye(D)
+            config = np.zeros((N, D))
+            for i in np.arange(N):
+                while True:
+                    config[i] = rng.multivariate_normal(means, covs)
+                    clip = np.maximum(np.zeros(D), np.minimum(np.ones(D), config[i]))
+                    if np.allclose(config[i], clip):
+                        break
+    else:  # Empirical initialization.
+        assert D == 1, 'ERROR: CCES 2020 data is 1-dimensional'
+        with open('CCES_2020_dist.npy', 'rb') as f:
+            emp = np.load(f)
+        vals, probs = emp[0], emp[1]
+        config = rng.choice(vals, N, p=probs) + (0.005 * rng.random(N) - 0.0025)
         config = config.reshape(-1, 1)
-    else:  # Higher dimensions.
-        means, covs = 0.5 + np.zeros(D), 0.04 * np.eye(D)
-        config = np.zeros((N, D))
-        for i in np.arange(N):
-            while True:
-                config[i] = rng.multivariate_normal(means, covs)
-                clip = np.maximum(np.zeros(D), np.minimum(np.ones(D), config[i]))
-                if np.allclose(config[i], clip):
-                    break
     init_config = np.copy(config)
 
     # Create an S x (D + 2) array to store the interaction history. Each step i

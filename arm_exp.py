@@ -39,7 +39,8 @@ class Experiment(object):
               'K' : [float: > 1],
               'S' : [int: > 0],
               'P' : [float: >= 0 and <= 1],
-              'shock' : [(int: >= 0, float: >= 0 and <= 1)]
+              'shock' : [(int: >= 0, float: >= 0 and <= 1)],
+              'init' : ['norm', 'emp']
             }
         iters (int): the number of iterated runs for each parameter setting
         savehist (bool): True if a run's history should be saved
@@ -51,7 +52,7 @@ class Experiment(object):
         # Unpack ARM parameters.
         defaults = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : [0.25], \
                     'R' : [0.25], 'K' : [math.inf], 'S' : [500000], 'P' : [0], \
-                    'shock' : [(None, None)]}
+                    'shock' : [(None, None)], 'init' : ['norm']}
         plist = [params[p] if p in params else defaults[p] for p in defaults]
         self.params = list(product(*plist))
 
@@ -75,10 +76,10 @@ class Experiment(object):
         # For each parameter combination, do iterated runs of polarization.
         silent = len(self.params) > 1 or self.iters > 1
         for i, param in enumerate(tqdm(self.params, desc='Simulating runs')):
-            N, D, E, T, R, K, S, P, shock = param
+            N, D, E, T, R, K, S, P, shock, init = param
             for seed in tqdm(run_seeds, desc='Iterating run', \
                              leave=bool(i == len(self.params) - 1)):
-                run_data = arm(N, D, E, T, R, K, S, P, shock, seed, silent)
+                run_data = arm(N, D, E, T, R, K, S, P, shock, init, seed, silent)
                 if not self.savehist:
                     self.runs_data[i].append((run_data[0], run_data[1], []))
                 else:
@@ -316,7 +317,7 @@ def expA_evo(seed=None):
     T = np.arange(0.05, 1.01, 0.1)
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : T, 'R' : [0.25], \
               'K' : [math.inf], 'S' : [2500000], 'P' : [0], \
-              'shock' : [(None, None)]}
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('A_evo', params, seed=seed)
     exp.run()
     exp.save()
@@ -333,7 +334,7 @@ def expA_sweep(seed=None):
     T, R = np.arange(0.05, 1.01, 0.05), np.arange(0.05, 1.01, 0.05)
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : T, 'R' : R, \
               'K' : [math.inf], 'S' : [1000000], 'P' : [0], \
-              'shock' : [(None, None)]}
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('A_sweep', params, iters=20, savehist=False, seed=seed)
     exp.run()
     exp.save()
@@ -350,7 +351,7 @@ def expB_evo(seed=None):
     E = [[e] for e in np.arange(0.05, 0.51, 0.05)]
     params = {'N' : [100], 'D' : [1], 'E' : E, 'T' : [0.3], 'R' : [0.25], \
               'K' : [math.inf], 'S' : [2500000], 'P' : [0], \
-              'shock' : [(None, None)]}
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('B_evo', params, seed=seed)
     exp.run()
     exp.save()
@@ -367,7 +368,7 @@ def expB_sweep(seed=None):
     T, E = np.arange(0.05, 1.01, 0.05), [[e] for e in np.arange(0.05, 0.51, 0.05)]
     params = {'N' : [100], 'D' : [1], 'E' : E, 'T' : T, 'R' : [0.25], \
               'K' : [math.inf], 'S' : [2000000], 'P' : [0], \
-              'shock' : [(None, None)]}
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('B_sweep', params, iters=20, savehist=False, seed=seed)
     exp.run()
     exp.save()
@@ -384,7 +385,7 @@ def expC_evo(seed=None):
     T = np.arange(0.05, 2**0.5, 0.1)
     params = {'N' : [100], 'D' : [2], 'E' : [[0.1, 0.1]], 'T' : T, \
               'R' : [0.25], 'K' : [math.inf], 'S' : [2500000], 'P' : [0], \
-              'shock' : [(None, None)]}
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('C_evo', params, seed=seed)
     exp.run()
     exp.save()
@@ -401,7 +402,7 @@ def expC_sweep(seed=None):
     T, R = np.arange(0.05, 2**0.5, 0.05), np.arange(0.05, 1.01, 0.05)
     params = {'N' : [100], 'D' : [2], 'E' : [[0.1, 0.1]], 'T' : T, 'R' : R, \
               'K' : [math.inf], 'S' : [1000000], 'P' : [0], \
-              'shock' : [(None, None)]}
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('C_sweep', params, iters=20, savehist=False, seed=seed)
     exp.run()
     exp.save()
@@ -418,7 +419,7 @@ def expD_evo(seed=None):
     E = [[0.1, e] for e in np.arange(0.05, 0.51, 0.05)]
     params = {'N' : [100], 'D' : [2], 'E' : E, 'T' : [0.25], 'R' : [0.25], \
               'K' : [math.inf], 'S' : [2500000], 'P' : [0], \
-              'shock' : [(None, None)]}
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('D_evo', params, seed=seed)
     exp.run()
     exp.save()
@@ -435,7 +436,7 @@ def expD_sweep(seed=None):
     E = np.arange(0.05, 0.51, 0.05)
     params = {'N' : [100], 'D' : [2], 'E' : list(product(E, E)), 'T' : [0.25], \
               'R' : [0.25], 'K' : [math.inf], 'S' : [2000000], 'P' : [0], \
-              'shock' : [(None, None)]}
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('D_sweep', params, iters=20, savehist=False, seed=seed)
     exp.run()
     exp.save()
@@ -452,7 +453,7 @@ def expE_evo(seed=None):
     P = np.arange(0, 0.11, 0.01)
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : [0.25], \
               'R' : [0.25], 'K' : [math.inf], 'S' : [2500000], 'P' : P, \
-              'shock' : [(None, None)]}
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('E_evo', params, seed=seed)
     exp.run()
     exp.save()
@@ -469,7 +470,7 @@ def expE_sweep(seed=None):
     T, P = np.arange(0.05, 1.01, 0.1), np.arange(0, 1.001, 0.05)
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : [0.25], \
               'R' : [0.25], 'K' : [math.inf], 'S' : [2000000], 'P' : P, \
-              'shock' : [(None, None)]}
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('E_sweep', params, iters=20, savehist=False, seed=seed)
     exp.run()
     exp.save()
@@ -486,7 +487,7 @@ def expF_evo(seed=None):
     shocks = [(500000, delta) for delta in np.arange(0, 0.81, 0.05)]
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : [0.25], \
               'R' : [0.25], 'K' : [math.inf], 'S' : [2500000], 'P' : [0], \
-              'shock' : shocks}
+              'shock' : shocks, 'init' : ['norm']}
     exp = Experiment('F_evo', params, seed=seed)
     exp.run()
     exp.save()
@@ -503,7 +504,7 @@ def expF_sweep(seed=None):
     steps, deltas = np.arange(100000, 900001, 100000), np.arange(0, 0.81, 0.05)
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : [0.25], \
               'R' : [0.25], 'K' : [math.inf], 'S' : [2000000], 'P' : [0], \
-              'shock' : list(product(steps, deltas))}
+              'shock' : list(product(steps, deltas)), 'init' : ['norm']}
     exp = Experiment('F_sweep', params, iters=20, savehist=False, seed=seed)
     exp.run()
     exp.save()
@@ -521,8 +522,26 @@ def expR1_storep(seed=None):
     K = np.append([np.power(2, i) for i in np.arange(1, 7)], [math.inf])
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : [0.25], \
               'R' : [0.25], 'K' : K, 'S' : [2000000], 'P' : [0], \
-              'shock' : [(None, None)]}
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('R1_storep', params, seed=seed)
+    exp.run()
+    exp.save()
+    exp.plot_evo(runs=np.arange(len(exp.params)), iters=[0])
+
+
+def expR1_emp_evo(seed=None):
+    """
+    With default parameters in 1D, a subset of tolerance-responsiveness
+    space, and empirical initialization, investigate the system's evolution
+    w.r.t. variance.
+
+    Data from this experiment produces Fig. ??.
+    """
+    T = np.arange(0.05, 1.01, 0.1)
+    params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : T, 'R' : [0.25], \
+              'K' : [math.inf], 'S' : [2500000], 'P' : [0], \
+              'shock' : [(None, None)], 'init' : ['emp']}
+    exp = Experiment('R1_emp_evo', params, seed=seed)
     exp.run()
     exp.save()
     exp.plot_evo(runs=np.arange(len(exp.params)), iters=[0])
@@ -542,6 +561,6 @@ if __name__ == '__main__':
             'B_sweep' : expB_sweep, 'C_evo' : expC_evo, 'C_sweep' : expC_sweep,\
             'D_evo' : expD_evo, 'D_sweep' : expD_sweep, 'E_evo' : expE_evo, \
             'E_sweep' : expE_sweep, 'F_evo' : expF_evo, 'F_sweep' : expF_sweep,\
-            'R1_storep' : expR1_storep}
+            'R1_storep' : expR1_storep, 'R1_emp_evo' : expR1_emp_evo}
     for id in args.exps:
         exps[id](args.rand_seed)
