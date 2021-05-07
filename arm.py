@@ -23,7 +23,7 @@ def arm(N=100, D=1, E=[0.1], T=0.25, R=0.25, K=math.inf, S=500000, P=0, \
     E ([float]): list of exposures
     T (float): tolerance
     R (float): responsiveness
-    K (float): steepness of stochastic repulsion
+    K (float): steepness of stochastic attraction-repulsion
     S (int): number of steps to simulate
     P (float): self-interest probability
     shock ((float, float)): external shock step and strength
@@ -111,7 +111,7 @@ def arm(N=100, D=1, E=[0.1], T=0.25, R=0.25, K=math.inf, S=500000, P=0, \
                     # Repulsion: agent i moves away from agent j.
                     config[i] = config[i] - R * (config[j] - config[i])
             elif dist > 0:
-                # Stochastic-Repulsion rule of opinion change.
+                # The Stochastic Attraction-Repulsion rule of opinion change.
                 rep_prob = 1/(1 + np.power((D**0.5/dist - 1)/(D**0.5/T - 1), K))
                 if rng.random() >= rep_prob:
                     # Attraction: agent i moves toward agent j.

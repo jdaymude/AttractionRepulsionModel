@@ -17,7 +17,6 @@ import matplotlib.cm as cm
 from matplotlib.colors import LogNorm
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.optimize import curve_fit
 from tqdm import tqdm
 
 
@@ -126,7 +125,7 @@ class Experiment(object):
         return vars
 
 
-    def plot_evo(self, runs, iters):
+    def plot_evo(self, runs, iters, title='', anno=''):
         """
         Takes indices of either (i) one run and multiple iterations or (ii) one
         iteration of multiple runs and plots the given metrics against time.
@@ -147,14 +146,14 @@ class Experiment(object):
         for i, runit in enumerate(tqdm(runits, desc='Calculating variance')):
             y = self.variances(runit[0], runit[1])
             ax.plot(np.arange(len(y)), y, color=colors[i])
-        ax.set(xlabel='# Steps', ylabel='Variance')
+        ax.set(title=title, xlabel='# Steps', ylabel='Variance')
         ax.grid()
         plt.tight_layout()
-        fig.savefig('figs/' + self.fname + '.png', dpi=300)
+        fig.savefig('figs/' + self.fname + anno + '.png', dpi=300)
         plt.close()
 
 
-    def plot_sweep(self, p1, p2, plabels, runs, cmax=None):
+    def plot_sweep(self, p1, p2, plabels, runs, cmax=None, title='', anno=''):
         """
         Plots the average variance for each run's iterations as a 2D color mesh,
         where the mesh is organized according to the given parameter ranges.
@@ -172,46 +171,9 @@ class Experiment(object):
         pcm = ax.pcolormesh(p1, p2, aves.reshape(len(p1), len(p2)).T, \
                             cmap='plasma', vmin=0, vmax=cmax, shading='nearest')
         fig.colorbar(pcm, ax=ax, label='Variance')
-        ax.set(xlabel=plabels[0], ylabel=plabels[1])
+        ax.set(title=title, xlabel=plabels[0], ylabel=plabels[1])
         plt.tight_layout()
-        fig.savefig('figs/' + self.fname +'.png', dpi=300)
-        plt.close()
-
-
-    def plot_stats(self, p, plabel, runs, title='', anno=''):
-        """
-        Plots the final variances of each run's iterations by the given
-        parameter values and performs logistic curve fitting.
-        """
-        tqdm.write('Plotting parameter statistics...')
-
-        # Get all (parameter, variance) points to plot/curve fit.
-        x, y = [], []
-        for i, run in enumerate(tqdm(runs, desc='Calculating final variances')):
-            for iter in self.runs_data[run]:
-                x.append(p[i])
-                y.append(self.variance(iter[1]))
-        x, y = np.array(x), np.array(y)
-
-        # Perform curve fitting.
-        def logi(x, a, b, c):
-            return a / (1 + np.exp(b * (x - c)))
-        opt = curve_fit(logi, x, y)
-        tqdm.write('error: {}'.format(np.sqrt(np.diag(opt[1]))))
-
-        # Plot the experimental data and fitted curve.
-        fig, ax = plt.subplots()
-        color = np.array(plt.cm.plasma(0)).T
-        ax.scatter(x, y, color=color, alpha=0.5, label='experiment data')
-        ps = np.linspace(np.min(p), np.max(p), 1000)
-        ax.plot(ps, logi(ps, *opt[0]), color=color, \
-                label='fit: {:.3f} / (1 + e^({:.3f}({} - {:.3f})))'.format(\
-                       opt[0][0], opt[0][1], plabel, opt[0][2]))
-        ax.set(title=title, xlabel=plabel, ylabel='variance')
-        ax.grid()
-        plt.legend()
-        plt.tight_layout()
-        fig.savefig('figs/' + self.fname +'_stats' + anno + '.png', dpi=300)
+        fig.savefig('figs/' + self.fname + anno + '.png', dpi=300)
         plt.close()
 
 
@@ -277,9 +239,7 @@ class Experiment(object):
         # Animate.
         frames = np.arange(0, S, frame_step)
         ani = FuncAnimation(fig, update, frames, init, interval=20, blit=True)
-        fname = 'figs/' + self.fname + '_ani'
-        fname += '_' + anno if (anno != '') else ''
-        ani.save(fname + '.mp4')
+        ani.save('figs/' + self.fname + '_ani' + anno + '.mp4')
         plt.close()
 
 
@@ -339,9 +299,7 @@ class Experiment(object):
         # Animate.
         frames = np.arange(0, S, frame_step)
         ani = FuncAnimation(fig, update, frames, init, interval=20, blit=True)
-        fname = 'figs/' + self.fname + '_ani'
-        fname += '_' + anno if (anno != '') else ''
-        ani.save(fname + '.mp4')
+        ani.save('figs/' + self.fname + '_ani' + anno + '.mp4')
         plt.close()
 
 
@@ -350,7 +308,7 @@ def expA_evo(seed=None):
     With default parameters in 1D and a subset of tolerance-responsiveness
     space, investigate the system's evolution w.r.t. variance.
 
-    Data from this experiment produces Figs. 1, 2, and S1D.
+    Data from this experiment produces Figs. 1 and 2.
     """
     T = np.arange(0.05, 1.01, 0.1)
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : T, 'R' : [0.25], \
@@ -367,7 +325,7 @@ def expA_sweep(seed=None):
     With default parameters in 1D, sweep tolerance-responsiveness space and plot
     average final variance.
 
-    Data from this experiment produces Figs. 3, S1E, and S3A-B.
+    Data from this experiment produces Figs. 3, S1C, and S3A-B.
     """
     T, R = np.arange(0.05, 1.01, 0.05), np.arange(0.05, 1.01, 0.05)
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : T, 'R' : R, \
@@ -556,7 +514,7 @@ def expR1_emp_evo(seed=None):
     space, and empirical initialization, investigate the system's evolution
     w.r.t. variance.
 
-    Data from this experiment is used in Figs. S1B-C.
+    Data from this experiment produces Fig. S1B.
     """
     T = np.arange(0.05, 1.01, 0.1)
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : T, 'R' : [0.25], \
@@ -572,7 +530,7 @@ def expR1_emp_its(seed=None):
     """
     Same as the above experiment, but with more iterations for average behavior.
 
-    Data from this experiment is used in Fig. S1E.
+    Data from this experiment produces Fig. S1C.
     """
     T = np.arange(0.05, 1.01, 0.05)
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : T, 'R' : [0.25], \
@@ -604,7 +562,7 @@ def expR1_sto_its(seed=None):
     """
     Same as the above experiment, but with more iterations for average behavior.
 
-    Data from this experiment is used in Fig. S2C.
+    Data from this experiment produces Fig. S2C.
     """
     K = np.append([np.power(2, i) for i in np.arange(1, 7)], [math.inf])
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : [0.25], \
