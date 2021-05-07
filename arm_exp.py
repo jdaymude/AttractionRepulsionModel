@@ -34,11 +34,13 @@ class Experiment(object):
               'N' : [int: > 1],
               'D' : [int: > 0],
               'E' : [[float: > 0]],
-              'T' : [float: >= 0 and <= sqrt(D)],
+              'T' : [float: > 0 and < sqrt(D)],
               'R' : [float: > 0 and <= 1],
+              'K' : [float: > 1],
               'S' : [int: > 0],
               'P' : [float: >= 0 and <= 1],
-              'shock' : [(int: >= 0, float: >= 0 and <= 1)]
+              'shock' : [(int: >= 0, float: >= 0 and <= 1)],
+              'init' : ['norm', 'emp']
             }
         iters (int): the number of iterated runs for each parameter setting
         savehist (bool): True if a run's history should be saved
@@ -49,8 +51,8 @@ class Experiment(object):
 
         # Unpack ARM parameters.
         defaults = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : [0.25], \
-                    'R' : [0.25], 'S' : [500000], 'P' : [0], \
-                    'shock' : [(None, None)]}
+                    'R' : [0.25], 'K' : [math.inf], 'S' : [500000], 'P' : [0], \
+                    'shock' : [(None, None)], 'init' : ['norm']}
         plist = [params[p] if p in params else defaults[p] for p in defaults]
         self.params = list(product(*plist))
 
@@ -74,10 +76,10 @@ class Experiment(object):
         # For each parameter combination, do iterated runs of polarization.
         silent = len(self.params) > 1 or self.iters > 1
         for i, param in enumerate(tqdm(self.params, desc='Simulating runs')):
-            N, D, E, T, R, S, P, shock = param
+            N, D, E, T, R, K, S, P, shock, init = param
             for seed in tqdm(run_seeds, desc='Iterating run', \
                              leave=bool(i == len(self.params) - 1)):
-                run_data = arm(N, D, E, T, R, S, P, shock, seed, silent)
+                run_data = arm(N, D, E, T, R, K, S, P, shock, init, seed, silent)
                 if not self.savehist:
                     self.runs_data[i].append((run_data[0], run_data[1], []))
                 else:
@@ -123,7 +125,7 @@ class Experiment(object):
         return vars
 
 
-    def plot_evo(self, runs, iters):
+    def plot_evo(self, runs, iters, title='', anno=''):
         """
         Takes indices of either (i) one run and multiple iterations or (ii) one
         iteration of multiple runs and plots the given metrics against time.
@@ -144,14 +146,14 @@ class Experiment(object):
         for i, runit in enumerate(tqdm(runits, desc='Calculating variance')):
             y = self.variances(runit[0], runit[1])
             ax.plot(np.arange(len(y)), y, color=colors[i])
-        ax.set(xlabel='# Steps', ylabel='Variance')
+        ax.set(title=title, xlabel='# Steps', ylabel='Variance')
         ax.grid()
         plt.tight_layout()
-        fig.savefig('figs/' + self.fname +'.png', dpi=300)
+        fig.savefig('figs/' + self.fname + anno + '.png', dpi=300)
         plt.close()
 
 
-    def plot_sweep(self, p1, p2, plabels, runs, cmax=None):
+    def plot_sweep(self, p1, p2, plabels, runs, cmax=None, title='', anno=''):
         """
         Plots the average variance for each run's iterations as a 2D color mesh,
         where the mesh is organized according to the given parameter ranges.
@@ -169,9 +171,9 @@ class Experiment(object):
         pcm = ax.pcolormesh(p1, p2, aves.reshape(len(p1), len(p2)).T, \
                             cmap='plasma', vmin=0, vmax=cmax, shading='nearest')
         fig.colorbar(pcm, ax=ax, label='Variance')
-        ax.set(xlabel=plabels[0], ylabel=plabels[1])
+        ax.set(title=title, xlabel=plabels[0], ylabel=plabels[1])
         plt.tight_layout()
-        fig.savefig('figs/' + self.fname +'.png', dpi=300)
+        fig.savefig('figs/' + self.fname + anno + '.png', dpi=300)
         plt.close()
 
 
@@ -237,9 +239,7 @@ class Experiment(object):
         # Animate.
         frames = np.arange(0, S, frame_step)
         ani = FuncAnimation(fig, update, frames, init, interval=20, blit=True)
-        fname = 'figs/' + self.fname + '_ani'
-        fname += '_' + anno if (anno != '') else ''
-        ani.save(fname + '.mp4')
+        ani.save('figs/' + self.fname + '_ani' + anno + '.mp4')
         plt.close()
 
 
@@ -299,9 +299,7 @@ class Experiment(object):
         # Animate.
         frames = np.arange(0, S, frame_step)
         ani = FuncAnimation(fig, update, frames, init, interval=20, blit=True)
-        fname = 'figs/' + self.fname + '_ani'
-        fname += '_' + anno if (anno != '') else ''
-        ani.save(fname + '.mp4')
+        ani.save('figs/' + self.fname + '_ani' + anno + '.mp4')
         plt.close()
 
 
@@ -314,7 +312,8 @@ def expA_evo(seed=None):
     """
     T = np.arange(0.05, 1.01, 0.1)
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : T, 'R' : [0.25], \
-              'S' : [2500000], 'P' : [0], 'shock' : [(None, None)]}
+              'K' : [math.inf], 'S' : [2500000], 'P' : [0], \
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('A_evo', params, seed=seed)
     exp.run()
     exp.save()
@@ -326,11 +325,12 @@ def expA_sweep(seed=None):
     With default parameters in 1D, sweep tolerance-responsiveness space and plot
     average final variance.
 
-    Data from this experiment produces Fig. 3.
+    Data from this experiment produces Figs. 3, S1C, and S3A-B.
     """
     T, R = np.arange(0.05, 1.01, 0.05), np.arange(0.05, 1.01, 0.05)
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : T, 'R' : R, \
-              'S' : [1000000], 'P' : [0], 'shock' : [(None, None)]}
+              'K' : [math.inf], 'S' : [1000000], 'P' : [0], \
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('A_sweep', params, iters=20, savehist=False, seed=seed)
     exp.run()
     exp.save()
@@ -346,7 +346,8 @@ def expB_evo(seed=None):
     """
     E = [[e] for e in np.arange(0.05, 0.51, 0.05)]
     params = {'N' : [100], 'D' : [1], 'E' : E, 'T' : [0.3], 'R' : [0.25], \
-              'S' : [2500000], 'P' : [0], 'shock' : [(None, None)]}
+              'K' : [math.inf], 'S' : [2500000], 'P' : [0], \
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('B_evo', params, seed=seed)
     exp.run()
     exp.save()
@@ -358,11 +359,12 @@ def expB_sweep(seed=None):
     With default parameters in 1D, sweep tolerance-exposure space and plot
     average final variance.
 
-    Data from this experiment produces Fig. 4.
+    Data from this experiment produces Figs. 4 and S3C.
     """
     T, E = np.arange(0.05, 1.01, 0.05), [[e] for e in np.arange(0.05, 0.51, 0.05)]
     params = {'N' : [100], 'D' : [1], 'E' : E, 'T' : T, 'R' : [0.25], \
-              'S' : [2000000], 'P' : [0], 'shock' : [(None, None)]}
+              'K' : [math.inf], 'S' : [2000000], 'P' : [0], \
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('B_sweep', params, iters=20, savehist=False, seed=seed)
     exp.run()
     exp.save()
@@ -378,7 +380,8 @@ def expC_evo(seed=None):
     """
     T = np.arange(0.05, 2**0.5, 0.1)
     params = {'N' : [100], 'D' : [2], 'E' : [[0.1, 0.1]], 'T' : T, \
-              'R' : [0.25], 'S' : [2500000], 'P' : [0], 'shock' : [(None, None)]}
+              'R' : [0.25], 'K' : [math.inf], 'S' : [2500000], 'P' : [0], \
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('C_evo', params, seed=seed)
     exp.run()
     exp.save()
@@ -390,11 +393,12 @@ def expC_sweep(seed=None):
     With default parameters in 2D, sweep tolerance-responsiveness space and plot
     average final variance.
 
-    Data from this experiment produces Fig. 6.
+    Data from this experiment produces Fig. S4.
     """
     T, R = np.arange(0.05, 2**0.5, 0.05), np.arange(0.05, 1.01, 0.05)
     params = {'N' : [100], 'D' : [2], 'E' : [[0.1, 0.1]], 'T' : T, 'R' : R, \
-              'S' : [1000000], 'P' : [0], 'shock' : [(None, None)]}
+              'K' : [math.inf], 'S' : [1000000], 'P' : [0], \
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('C_sweep', params, iters=20, savehist=False, seed=seed)
     exp.run()
     exp.save()
@@ -406,11 +410,12 @@ def expD_evo(seed=None):
     With default parameters in 2D and a subset of exposures, investigate the
     system's evolution w.r.t. variance.
 
-    Data from this experiment produces Fig. 8.
+    Data from this experiment produces Fig. 6.
     """
     E = [[0.1, e] for e in np.arange(0.05, 0.51, 0.05)]
     params = {'N' : [100], 'D' : [2], 'E' : E, 'T' : [0.25], 'R' : [0.25], \
-              'S' : [2500000], 'P' : [0], 'shock' : [(None, None)]}
+              'K' : [math.inf], 'S' : [2500000], 'P' : [0], \
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('D_evo', params, seed=seed)
     exp.run()
     exp.save()
@@ -422,11 +427,12 @@ def expD_sweep(seed=None):
     With default parameters in 2D, sweep exposures and plot average final
     variance.
 
-    Data from this experiment produces Fig. 7.
+    Data from this experiment produces Fig. S5.
     """
     E = np.arange(0.05, 0.51, 0.05)
     params = {'N' : [100], 'D' : [2], 'E' : list(product(E, E)), 'T' : [0.25], \
-              'R' : [0.25], 'S' : [2000000], 'P' : [0], 'shock' : [(None, None)]}
+              'R' : [0.25], 'K' : [math.inf], 'S' : [2000000], 'P' : [0], \
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('D_sweep', params, iters=20, savehist=False, seed=seed)
     exp.run()
     exp.save()
@@ -438,11 +444,12 @@ def expE_evo(seed=None):
     With default parameters in 1D and a subset of self-interest space,
     investigate the system's evolution w.r.t. variance.
 
-    Data from this experiment produces Fig. 9.
+    Data from this experiment produces Fig. 7.
     """
     P = np.arange(0, 0.11, 0.01)
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : [0.25], \
-              'R' : [0.25], 'S' : [2500000], 'P' : P, 'shock' : [(None, None)]}
+              'R' : [0.25], 'K' : [math.inf], 'S' : [2500000], 'P' : P, \
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('E_evo', params, seed=seed)
     exp.run()
     exp.save()
@@ -454,11 +461,12 @@ def expE_sweep(seed=None):
     With default parameters in 1D, sweep self-interest space and plot average
     final variance.
 
-    Data from this experiment produces Fig. 10.
+    Data from this experiment produces Fig. S6.
     """
     T, P = np.arange(0.05, 1.01, 0.1), np.arange(0, 1.001, 0.05)
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : [0.25], \
-              'R' : [0.25], 'S' : [2000000], 'P' : P, 'shock' : [(None, None)]}
+              'R' : [0.25], 'K' : [math.inf], 'S' : [2000000], 'P' : P, \
+              'shock' : [(None, None)], 'init' : ['norm']}
     exp = Experiment('E_sweep', params, iters=20, savehist=False, seed=seed)
     exp.run()
     exp.save()
@@ -470,11 +478,12 @@ def expF_evo(seed=None):
     With default parameters in 1D and a subset of external shocks, investigate
     the system's evolution w.r.t. variance.
 
-    Data from this experiment produces Fig. 11.
+    Data from this experiment produces Fig. 8.
     """
     shocks = [(500000, delta) for delta in np.arange(0, 0.81, 0.05)]
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : [0.25], \
-              'R' : [0.25], 'S' : [2500000], 'P' : [0], 'shock' : shocks}
+              'R' : [0.25], 'K' : [math.inf], 'S' : [2500000], 'P' : [0], \
+              'shock' : shocks, 'init' : ['norm']}
     exp = Experiment('F_evo', params, seed=seed)
     exp.run()
     exp.save()
@@ -486,17 +495,82 @@ def expF_sweep(seed=None):
     With default parameters in 1D, sweep external shocks and plot final average
     variance.
 
-    Data from this experiment produces Fig. 12.
+    Data from this experiment produces Fig. 9.
     """
     steps, deltas = np.arange(100000, 900001, 100000), np.arange(0, 0.81, 0.05)
     params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : [0.25], \
-              'R' : [0.25], 'S' : [2000000], 'P' : [0], \
-              'shock' : list(product(steps, deltas))}
+              'R' : [0.25], 'K' : [math.inf], 'S' : [2000000], 'P' : [0], \
+              'shock' : list(product(steps, deltas)), 'init' : ['norm']}
     exp = Experiment('F_sweep', params, iters=20, savehist=False, seed=seed)
     exp.run()
     exp.save()
     exp.plot_sweep(steps, deltas, ('Shock Step', 'Shock Strength'), \
                    runs=np.arange(len(exp.params)), cmax=0.25)
+
+
+def expR1_emp_evo(seed=None):
+    """
+    With default parameters in 1D, a subset of tolerance-responsiveness
+    space, and empirical initialization, investigate the system's evolution
+    w.r.t. variance.
+
+    Data from this experiment produces Fig. S1B.
+    """
+    T = np.arange(0.05, 1.01, 0.1)
+    params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : T, 'R' : [0.25], \
+              'K' : [math.inf], 'S' : [2500000], 'P' : [0], \
+              'shock' : [(None, None)], 'init' : ['emp']}
+    exp = Experiment('R1_emp_evo', params, seed=seed)
+    exp.run()
+    exp.save()
+    exp.plot_evo(runs=np.arange(len(exp.params)), iters=[0])
+
+
+def expR1_emp_its(seed=None):
+    """
+    Same as the above experiment, but with more iterations for average behavior.
+
+    Data from this experiment produces Fig. S1C.
+    """
+    T = np.arange(0.05, 1.01, 0.05)
+    params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : T, 'R' : [0.25], \
+              'K' : [math.inf], 'S' : [1000000], 'P' : [0], \
+              'shock' : [(None, None)], 'init' : ['emp']}
+    exp = Experiment('R1_emp_its', params, iters=20, savehist=False, seed=seed)
+    exp.run()
+    exp.save()
+
+
+def expR1_sto_evo(seed=None):
+    """
+    With default parameters in 1D and varying steepness of stochastic repulsion,
+    investigate the system's evolution w.r.t. variance.
+
+    Data from this experiment produces Fig. S2B.
+    """
+    K = np.append([np.power(2, i) for i in np.arange(1, 7)], [math.inf])
+    params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : [0.25], \
+              'R' : [0.25], 'K' : K, 'S' : [2000000], 'P' : [0], \
+              'shock' : [(None, None)], 'init' : ['norm']}
+    exp = Experiment('R1_sto_evo', params, seed=seed)
+    exp.run()
+    exp.save()
+    exp.plot_evo(runs=np.arange(len(exp.params)), iters=[0])
+
+
+def expR1_sto_its(seed=None):
+    """
+    Same as the above experiment, but with more iterations for average behavior.
+
+    Data from this experiment produces Fig. S2C.
+    """
+    K = np.append([np.power(2, i) for i in np.arange(1, 7)], [math.inf])
+    params = {'N' : [100], 'D' : [1], 'E' : [[0.1]], 'T' : [0.25], \
+              'R' : [0.25], 'K' : K, 'S' : [1500000], 'P' : [0], \
+              'shock' : [(None, None)], 'init' : ['norm']}
+    exp = Experiment('R1_sto_its', params, iters=20, savehist=False, seed=seed)
+    exp.run()
+    exp.save()
 
 
 if __name__ == '__main__':
@@ -512,6 +586,8 @@ if __name__ == '__main__':
     exps = {'A_evo' : expA_evo, 'A_sweep' : expA_sweep, 'B_evo' : expB_evo, \
             'B_sweep' : expB_sweep, 'C_evo' : expC_evo, 'C_sweep' : expC_sweep,\
             'D_evo' : expD_evo, 'D_sweep' : expD_sweep, 'E_evo' : expE_evo, \
-            'E_sweep' : expE_sweep, 'F_evo' : expF_evo, 'F_sweep' : expF_sweep}
+            'E_sweep' : expE_sweep, 'F_evo' : expF_evo, 'F_sweep' : expF_sweep,\
+            'R1_emp_evo' : expR1_emp_evo, 'R1_emp_its' : expR1_emp_its, \
+            'R1_sto_evo' : expR1_sto_evo, 'R1_sto_its' : expR1_sto_its}
     for id in args.exps:
         exps[id](args.rand_seed)
