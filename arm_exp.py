@@ -128,7 +128,7 @@ class Experiment(object):
     def plot_evo(self, runs, iters, title='', anno=''):
         """
         Takes indices of either (i) one run and multiple iterations or (ii) one
-        iteration of multiple runs and plots the given metrics against time.
+        iteration of multiple runs and plots variance over time.
         """
         tqdm.write('Plotting variance over time...')
 
