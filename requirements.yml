@@ -1,0 +1,9 @@
+name: ARM
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12.*
+  - numpy=1.26.*
+  - matplotlib=3.9.*
+  - tqdm=4.66.*

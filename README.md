@@ -23,19 +23,25 @@ This Python implementation simulates the ARM, allowing variations in the followi
 
 ## Getting Started
 
-1. You'll need a command line (Unix-based, Windows Command Prompt, or macOS Terminal) and any Python installation version 3.5 or newer. You will also need the [numpy](https://numpy.org/install/), [matplotlib](https://matplotlib.org/stable/users/installing.html), and [tqdm](https://github.com/tqdm/tqdm#installation) packages.
+1. You'll need a command line (Unix-based, Windows Command Prompt, or macOS Terminal) and the [conda](https://docs.conda.io/projects/conda/en/latest/index.html) package manager for Python.
 
 2. Clone this repository or download the latest [release](https://github.com/jdaymude/AttractionRepulsionModel/releases).
 
-3. Create `data/` and `figs/` in the code directory.
+3. Set up the `conda` environment for this project by running:
+```
+conda env create --file requirements.yml
+conda activate ARM
+```
 
-4. To reproduce the data and figures from our paper, run the experiments script:
+4. Create `data/` and `figs/` in the code directory.
+
+5. To reproduce the data and figures from our paper, run the experiments script:
 ```
 python arm_exp.py -E <id_of_experiment> -R <random_seed>
 ```
 A list of experiments and their IDs can be found in `arm_exp.py`. All results from the paper were obtained with seed `3121127542`.
 
-5. While less convenient, you can alternatively run a single simulation of the ARM with your own parameters of interest:
+6. While less convenient, you can alternatively run a single simulation of the ARM with your own parameters of interest:
 ```
 python
 >>> from arm import arm
@@ -44,7 +50,7 @@ python
 >>> init, final, history = arm(N, D, E, T, R, P, shock)
 ```
 
-6. Note that the plotting and analysis functions are members of the `Experiment` class in `arm_exp.py`.
+7. Note that the plotting and analysis functions are members of the `Experiment` class in `arm_exp.py`.
 If you want to do anything heavier than simply getting the data for a single run, you should add your own experiments to `arm_exp.py` and run them as in Step 4.
 
 

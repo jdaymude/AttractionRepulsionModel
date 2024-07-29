@@ -15,26 +15,26 @@ from tqdm import trange
 def arm(N=100, D=1, E=[0.1], T=0.25, R=0.25, K=math.inf, S=500000, P=0, \
         shock=(None, None), init='norm', seed=None, silent=False):
     """
-    Execute a simulation of the Attraction-Repulsion Model.
+    Runs a simulation of the Attraction-Repulsion Model.
 
-    Inputs:
-    N (int): number of agents
-    D (int): number of ideological dimensions
-    E ([float]): list of exposures
-    T (float): tolerance
-    R (float): responsiveness
-    K (float): steepness of stochastic attraction-repulsion
-    S (int): number of steps to simulate
-    P (float): self-interest probability
-    shock ((float, float)): external shock step and strength
-    init (str): 'norm' for Gaussian normal initialization, 'emp' for empirical
-    seed (int): random seed
-    silent (bool): True if progress should be shown on command line
+    :param N: an int number of agents (>= 2)
+    :param D: an int number of ideological dimensions (>= 1)
+    :param E: a list of D float exposures (> 0)
+    :param T: a float tolerance in [0, sqrt(D)]
+    :param R: a float responsiveness in (0, 1]
+    :param K: a float steepness of stochastic attraction-repulsion (> 1), or
+              math.inf if not used
+    :param S: an int number of steps to simulate (> 1)
+    :param P: a float self-interest probability in [0, 1]
+    :param shock: a pair specifying the external shock's int step and float
+                  strength, or (None, None) if no external shock
+    :param init: 'norm' for Gaussian normal initialization, 'emp' for empirical
+    :param seed: an int seed for random number generation
+    :param silent: True iff progress should be shown on command line
 
-    Returns (init_config, config, history):
-    init_config: N x D array of initial agent ideological positions
-    config: N x D array of agent ideological positions after S steps
-    history: S x (D + 2) array detailing interaction history
+    :returns init_config: an NxD array of initial agent ideological positions
+    :returns config: an NxD array of agent ideological positions after S steps
+    :returns history: an Sx(D+2) array detailing the interaction history
     """
 
     # Initialize the random number generation.
